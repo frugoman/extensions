@@ -17,7 +17,11 @@ type ExtensionPreferences = {
   /** AI API Key - Only needed for hosted providers. Leave empty for Ollama or other local servers. */
   "aiApiKey"?: string,
   /** Extra AI Instructions - Optional instructions added to every prompt, e.g. 'Answer in Spanish' or 'Keep it under 5 bullet points' */
-  "aiInstructions"?: string
+  "aiInstructions"?: string,
+  /** AI Thinking - For reasoning models (qwen3, deepseek-r1, gpt-oss…). Disabling thinking makes answers much faster. Sent as `reasoning_effort`. */
+  "aiThinking": "default" | "none" | "low" | "medium" | "high",
+  /** Extra Model Parameters - Extra parameters sent with every request, as flags (--think=false --temperature=0.2) or JSON ({"temperature": 0.2, "top_p": 0.9}). */
+  "aiExtraParams"?: string
 }
 
 /** Preferences accessible in all the extension's commands */

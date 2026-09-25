@@ -37,6 +37,22 @@ Set the **AI Server URL**, **AI Model** and, if needed, **AI API Key** preferenc
 | OpenAI | `https://api.openai.com/v1` |
 | OpenRouter | `https://openrouter.ai/api/v1` |
 
+### Thinking and extra model parameters
+
+Reasoning models (e.g. `qwen3`, `deepseek-r1`, `gpt-oss`) can be slow because they "think" before answering. Set **AI Thinking** to **Disabled** to turn it off (the equivalent of `ollama run qwen3 --think=false`).
+
+Use **Extra Model Parameters** to send any other parameter supported by your server with every request, either as flags or as JSON:
+
+```
+--think=false --temperature=0.2 --top_p=0.9
+```
+
+```json
+{ "temperature": 0.2, "seed": 42, "max_tokens": 800 }
+```
+
+`think` is translated to the `reasoning_effort` parameter that OpenAI-compatible APIs (including Ollama's) expect.
+
 Use the **Extra AI Instructions** preference to customise every answer, e.g. `Answer in Spanish` or `Use at most 5 bullet points`.
 
 ## Upgrading from older versions

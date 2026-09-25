@@ -5,7 +5,16 @@ import { getPreferenceValues } from "@raycast/api";
 
 export type ChatMessage = { role: "system" | "user" | "assistant"; content: string };
 
-export type AIConfig = { baseUrl: string; model: string; apiKey?: string; instructions?: string };
+export type AIConfig = {
+  baseUrl: string;
+  model: string;
+  apiKey?: string;
+  instructions?: string;
+  /** `default` leaves the model's behaviour, anything else is sent as `reasoning_effort` (`none` disables thinking). */
+  thinking?: string;
+  /** Extra request parameters, as JSON or `--key=value` flags. */
+  extraParams?: string;
+};
 
 export const DEFAULT_AI_BASE_URL = "http://localhost:11434/v1";
 export const DEFAULT_AI_MODEL = "llama3.2";
@@ -17,7 +26,85 @@ export function getAIConfig(): AIConfig {
     model: preferences.aiModel?.trim() || DEFAULT_AI_MODEL,
     apiKey: preferences.aiApiKey?.trim() || undefined,
     instructions: preferences.aiInstructions?.trim() || undefined,
+    thinking: preferences.aiThinking || undefined,
+    extraParams: preferences.aiExtraParams?.trim() || undefined,
   };
+}
+
+function parseValue(value: string): unknown {
+  if (value === "true" || value === "false" || value === "null" || /^-?\d+(\.\d+)?$/.test(value)) {
+    return JSON.parse(value);
+  }
+  if (/^[[{"]/.test(value)) {
+    try {
+      return JSON.parse(value);
+    } catch {
+      // Not JSON, keep it as a string.
+    }
+  }
+  return value.replace(/^'(.*)'$/, "$1");
+}
+
+/**
+ * Parses the "Extra Model Parameters" preference. Accepts a JSON object (`{"temperature": 0.2}`)
+ * or command line style flags (`--think=false --temperature 0.2`, `top_p=0.9`).
+ */
+export function parseExtraParams(input: string | undefined): Record<string, unknown> {
+  const value = input?.trim();
+  if (!value) {
+    return {};
+  }
+  if (value.startsWith("{") || value.startsWith("[")) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(value);
+    } catch (error) {
+      throw new AIError(
+        `The "Extra Model Parameters" preference is not valid JSON (${error instanceof Error ? error.message : error}).`,
+      );
+    }
+    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new AIError(`The "Extra Model Parameters" preference must be a JSON object, e.g. {"temperature": 0.2}.`);
+    }
+    return parsed as Record<string, unknown>;
+  }
+
+  const params: Record<string, unknown> = {};
+  const tokens = value.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) ?? [];
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index].replace(/^-+/, "");
+    const separator = token.indexOf("=");
+    if (separator > 0) {
+      params[token.slice(0, separator).replace(/-/g, "_")] = parseValue(token.slice(separator + 1));
+    } else if (tokens[index + 1] !== undefined && !tokens[index + 1].startsWith("-")) {
+      params[token.replace(/-/g, "_")] = parseValue(tokens[++index]);
+    } else if (token.length > 0) {
+      params[token.replace(/-/g, "_")] = true;
+    }
+  }
+  return params;
+}
+
+/** Builds the body of the chat completions request. */
+export function buildRequestBody(messages: ChatMessage[], config: AIConfig): Record<string, unknown> {
+  const extra = parseExtraParams(config.extraParams);
+
+  // `think` is how Ollama calls it (`ollama run --think=false`), but its OpenAI-compatible API
+  // (like OpenAI and others) expects `reasoning_effort`, where "none" disables thinking.
+  if ("think" in extra) {
+    const think = extra.think;
+    delete extra.think;
+    if (!("reasoning_effort" in extra) && !("reasoning" in extra)) {
+      if (think === false || think === "false" || think === "none") {
+        extra.reasoning_effort = "none";
+      } else if (typeof think === "string" && think !== "true") {
+        extra.reasoning_effort = think;
+      }
+    }
+  }
+
+  const thinking = config.thinking && config.thinking !== "default" ? { reasoning_effort: config.thinking } : {};
+  return { model: config.model, ...thinking, ...extra, messages, stream: true };
 }
 
 export class AIError extends Error {}
@@ -73,6 +160,7 @@ export async function generateText(
   options: { signal?: AbortSignal; onText?: (text: string) => void; config?: AIConfig } = {},
 ): Promise<string> {
   const config = options.config ?? getAIConfig();
+  const body = buildRequestBody(messages, config);
   const headers: Record<string, string> = { "Content-Type": "application/json", Accept: "text/event-stream" };
   if (config.apiKey) {
     headers.Authorization = `Bearer ${config.apiKey}`;
@@ -83,7 +171,7 @@ export async function generateText(
     response = await fetch(`${config.baseUrl}/chat/completions`, {
       method: "POST",
       headers,
-      body: JSON.stringify({ model: config.model, messages, stream: true }),
+      body: JSON.stringify(body),
       signal: options.signal,
     });
   } catch (error) {

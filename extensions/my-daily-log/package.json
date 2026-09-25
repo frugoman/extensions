@@ -194,6 +194,43 @@
       "description": "Optional instructions added to every prompt, e.g. 'Answer in Spanish' or 'Keep it under 5 bullet points'",
       "type": "textfield",
       "required": false
+    },
+    {
+      "name": "aiThinking",
+      "title": "AI Thinking",
+      "description": "For reasoning models (qwen3, deepseek-r1, gpt-oss\u2026). Disabling thinking makes answers much faster. Sent as `reasoning_effort`.",
+      "type": "dropdown",
+      "required": false,
+      "default": "default",
+      "data": [
+        {
+          "title": "Model Default",
+          "value": "default"
+        },
+        {
+          "title": "Disabled (like --think=false)",
+          "value": "none"
+        },
+        {
+          "title": "Low",
+          "value": "low"
+        },
+        {
+          "title": "Medium",
+          "value": "medium"
+        },
+        {
+          "title": "High",
+          "value": "high"
+        }
+      ]
+    },
+    {
+      "name": "aiExtraParams",
+      "title": "Extra Model Parameters",
+      "description": "Extra parameters sent with every request, as flags (--think=false --temperature=0.2) or JSON ({\"temperature\": 0.2, \"top_p\": 0.9}).",
+      "type": "textfield",
+      "required": false
     }
   ],
   "dependencies": {

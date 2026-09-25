@@ -3,6 +3,7 @@
 ## [Local AI, Reminders and Timezone Fixes] - {PR_MERGE_DATE}
 
 - The AI commands no longer use Raycast AI: they work with Ollama (default) or any OpenAI-compatible server (LM Studio, llama.cpp, OpenAI, OpenRouter…), configurable in the preferences
+- Added "AI Thinking" (e.g. disable thinking for qwen3 like `--think=false`) and "Extra Model Parameters" preferences to pass any parameter (temperature, top_p, seed…) to the model
 - AI summaries are now generated on demand, can be regenerated and copied, and show a helpful message when the AI server is not reachable
 - Fixed logs showing up on the wrong day ("always a day behind", logs after midnight counted as yesterday) by storing them by local date instead of UTC. Existing logs are migrated automatically and backed up
 - Fixed times displayed as `24:35` and dates displayed off by one in "Logged Days of Month"

@@ -27,6 +27,10 @@ export function AIReportView(props: {
         <Detail.Metadata>
           <Detail.Metadata.Label title="Model" text={config.model} icon={Icon.ComputerChip} />
           <Detail.Metadata.Label title="Server" text={config.baseUrl} />
+          {config.thinking && config.thinking !== "default" && (
+            <Detail.Metadata.Label title="Thinking" text={config.thinking === "none" ? "Disabled" : config.thinking} />
+          )}
+          {config.extraParams && <Detail.Metadata.Label title="Extra Parameters" text={config.extraParams} />}
           <Detail.Metadata.Label title="Logs" text={String(props.logsCount)} />
         </Detail.Metadata>
       }
